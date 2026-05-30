@@ -1,0 +1,113 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  baseCurrency String   @default("INR") @map("base_currency")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  categories       Category[]
+  paymentMethods   PaymentMethod[]
+  transactions     Transaction[]
+  holdings         Holding[]
+  holdingSnapshots HoldingSnapshot[]
+  refreshTokens    RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Category {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  name   String
+  type   String
+  color  String @default("#6366f1")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("categories")
+}
+
+model PaymentMethod {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  name   String
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("payment_methods")
+}
+
+model Transaction {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  categoryId      String   @map("category_id")
+  paymentMethodId String?  @map("payment_method_id")
+  type            String
+  amount          Decimal  @db.Decimal(14, 2)
+  txnDate         DateTime @map("txn_date") @db.Date
+  note            String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category       @relation(fields: [categoryId], references: [id])
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+
+  @@index([userId, txnDate])
+  @@map("transactions")
+}
+
+model Holding {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  type           String
+  investedAmount Decimal? @map("invested_amount") @db.Decimal(14, 2)
+  note           String?
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots HoldingSnapshot[]
+
+  @@map("holdings")
+}
+
+model HoldingSnapshot {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  holdingId String   @map("holding_id")
+  period    String
+  value     Decimal  @db.Decimal(14, 2)
+  asOfDate  DateTime @map("as_of_date") @db.Date
+  note      String?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holding Holding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+
+  @@unique([holdingId, period])
+  @@index([userId, period])
+  @@map("holding_snapshots")
+}
