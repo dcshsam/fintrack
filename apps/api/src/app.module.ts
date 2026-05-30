@@ -8,8 +8,10 @@ import { HoldingsModule } from './holdings/holdings.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { HealthController } from './health.controller';
 
 @Module({
+  controllers: [HealthController],
   imports: [
     PrismaModule,
     AuthModule,
